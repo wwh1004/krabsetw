@@ -41,13 +41,13 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         EventRecordErrorDelegate^ OnError;
 
         krabs::c_provider_callback GetOnEventBridge()
-		{
-			return (krabs::c_provider_callback)Marshal::GetFunctionPointerForDelegate(eventDelegateKeepAlive).ToPointer();
-		}
+        {
+            return (krabs::c_provider_callback)Marshal::GetFunctionPointerForDelegate(eventDelegateKeepAlive).ToPointer();
+        }
 
         krabs::c_provider_error_callback GetOnErrorBridge()
         {
-			return (krabs::c_provider_error_callback)Marshal::GetFunctionPointerForDelegate(errorDelegateKeepAlive).ToPointer();
+            return (krabs::c_provider_error_callback)Marshal::GetFunctionPointerForDelegate(errorDelegateKeepAlive).ToPointer();
         }
     };
 

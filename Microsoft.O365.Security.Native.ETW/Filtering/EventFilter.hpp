@@ -68,7 +68,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         /// An event that is invoked when an ETW event is received
         /// but an error occurs handling the record.
         /// </summary>
-		event EventRecordErrorDelegate^ OnError OnErrorHelper(bridge_);
+        event EventRecordErrorDelegate^ OnError OnErrorHelper(bridge_);
 
     internal:
         /// <summary>
@@ -121,8 +121,8 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
 
     inline void EventFilter::RegisterCallbacks()
     {
-		filter_->add_on_event_callback(bridge_->GetOnEventBridge());
-		filter_->add_on_error_callback(bridge_->GetOnErrorBridge());
+        filter_->add_on_event_callback(bridge_->GetOnEventBridge());
+        filter_->add_on_error_callback(bridge_->GetOnErrorBridge());
     }
 
 } } } }

@@ -109,8 +109,8 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
 
     inline void KernelProvider::RegisterCallbacks()
     {
-		provider_->add_on_event_callback(bridge_->GetOnEventBridge());
-		provider_->add_on_error_callback(bridge_->GetOnErrorBridge());
+        provider_->add_on_event_callback(bridge_->GetOnEventBridge());
+        provider_->add_on_error_callback(bridge_->GetOnErrorBridge());
     }
 
 } } } }

@@ -156,12 +156,12 @@ namespace krabs {
      */
     std::unique_ptr<char[]> get_event_schema_from_tdh(const EVENT_RECORD &);
 
-	/**
-	 * <summary>
-	 * Get event schema from TDH without throwing exceptions.
-	 * If the schema is not found, the function returns an empty unique_ptr and sets the status.
-	 * </summary>
-	 */
+    /**
+     * <summary>
+     * Get event schema from TDH without throwing exceptions.
+     * If the schema is not found, the function returns an empty unique_ptr and sets the status.
+     * </summary>
+     */
     std::unique_ptr<char[]> get_event_schema_from_tdh_no_throw(const EVENT_RECORD&, TDHSTATUS&);
 
     /**
@@ -193,8 +193,8 @@ namespace krabs {
         /**
         * <summary>
         * Retrieves the event schema from the cache or falls back to
-		* TDH to load the schema without throwing exceptions.
-		* If the schema is not found, the function returns nullptr and sets the status.
+        * TDH to load the schema without throwing exceptions.
+        * If the schema is not found, the function returns nullptr and sets the status.
         * </summary>
         */
         const PTRACE_EVENT_INFO get_event_schema_no_throw(const EVENT_RECORD& record, TDHSTATUS& status) const;
@@ -280,15 +280,15 @@ namespace krabs {
 
     inline const PTRACE_EVENT_INFO schema_locator::get_event_schema(const EVENT_RECORD &record) const
     {
-		TDHSTATUS status = ERROR_SUCCESS;
-		auto buffer = get_event_schema_no_throw(record, status);
-		error_check_common_conditions(status, record);
-		return buffer;
+        TDHSTATUS status = ERROR_SUCCESS;
+        auto buffer = get_event_schema_no_throw(record, status);
+        error_check_common_conditions(status, record);
+        return buffer;
     }
 
     inline const PTRACE_EVENT_INFO schema_locator::get_event_schema_no_throw(const EVENT_RECORD& record, TDHSTATUS& status) const
     {
-		status = ERROR_SUCCESS;
+        status = ERROR_SUCCESS;
 
         auto eventName = get_trace_logger_event_name(record);
         auto key = schema_key(record, eventName);
@@ -298,8 +298,8 @@ namespace krabs {
         if (it != cache_.end()) {
             auto& value = it->second;
             if (std::holds_alternative<TDHSTATUS>(value)) {
-				status = std::get<TDHSTATUS>(value);
-				return nullptr;
+                status = std::get<TDHSTATUS>(value);
+                return nullptr;
             }
             return (PTRACE_EVENT_INFO)std::get<std::unique_ptr<char[]>>(value).get();
         }
@@ -327,10 +327,10 @@ namespace krabs {
 
     inline std::unique_ptr<char[]> get_event_schema_from_tdh(const EVENT_RECORD &record)
     {
-		TDHSTATUS status = ERROR_SUCCESS;
-		auto buffer = get_event_schema_from_tdh_no_throw(record, status);
-		error_check_common_conditions(status, record);
-		return buffer;
+        TDHSTATUS status = ERROR_SUCCESS;
+        auto buffer = get_event_schema_from_tdh_no_throw(record, status);
+        error_check_common_conditions(status, record);
+        return buffer;
     }
 
     inline std::unique_ptr<char[]> get_event_schema_from_tdh_no_throw(const EVENT_RECORD& record, TDHSTATUS& status)
@@ -358,9 +358,9 @@ namespace krabs {
             (PTRACE_EVENT_INFO)buffer.get(),
             &bufferSize);
 
-		if (status != ERROR_SUCCESS) {
-			return {};
-		}
+        if (status != ERROR_SUCCESS) {
+            return {};
+        }
 
         return buffer;
     }

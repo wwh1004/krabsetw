@@ -164,7 +164,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         event IEventRecordDelegate^ DefaultEvent OnEventHelper(bridge_);
 
         /// <summary>
-		/// An event is fired when failed to fire <see cref="DefaultEvent"/>.
+        /// An event is fired when failed to fire <see cref="DefaultEvent"/>.
         /// </summary>
         event EventRecordErrorDelegate^ DefaultError OnErrorHelper(bridge_);
 
@@ -181,7 +181,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     inline KernelTrace::KernelTrace()
         : trace_(new krabs::kernel_trace())
     {
-		RegisterCallbacks();
+        RegisterCallbacks();
     }
 
     inline KernelTrace::~KernelTrace()
@@ -238,12 +238,12 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         ExecuteAndConvertExceptions(return TraceStats(trace_->query_stats()));
     }
 
-	inline void KernelTrace::RegisterCallbacks()
-	{
-		trace_->set_default_event_callback(bridge_->GetOnEventBridge());
-	}
+    inline void KernelTrace::RegisterCallbacks()
+    {
+        trace_->set_default_event_callback(bridge_->GetOnEventBridge());
+    }
 
-	inline void KernelTrace::SetDefaultEventCallback(IEventRecordDelegate^ callback)
+    inline void KernelTrace::SetDefaultEventCallback(IEventRecordDelegate^ callback)
     {
         bridge_->OnEvent = callback;
     }

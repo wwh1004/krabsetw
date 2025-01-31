@@ -283,10 +283,10 @@ namespace krabs {
         void set_default_event_callback(c_provider_callback callback);
 
         /**
-		 * <summary>
-		 * Sets whether to enable getting schema information for MOF events.
-		 * Default behavior is to get schema information for MOF events.
-		 * </summary>
+         * <summary>
+         * Sets whether to enable getting schema information for MOF events.
+         * Default behavior is to get schema information for MOF events.
+         * </summary>
          *
          * <param name="mof_events_enabled">false to disable MOF events</param>
          * <example>
