@@ -5,13 +5,9 @@
 
 #include <krabs.hpp>
 
+#include "../Callbacks.hpp"
 #include "../Conversions.hpp"
-#include "../EventRecordError.hpp"
-#include "../EventRecord.hpp"
-#include "../EventRecordMetadata.hpp"
 #include "../Guid.hpp"
-#include "../IEventRecord.hpp"
-#include "../IEventRecordError.hpp"
 #include "../NativePtr.hpp"
 #include "Predicate.hpp"
 
@@ -21,22 +17,15 @@ using namespace System::Runtime::InteropServices;
 namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
 
     /// <summary>
-    /// Delegate called when a new ETW <see cref="O365::Security::ETW::EventRecord"/> is received.
-    /// </summary>
-    public delegate void IEventRecordDelegate(O365::Security::ETW::IEventRecord^ record);
-
-    /// <summary>
-    /// Delegate called on errors when processing an <see cref="O365::Security::ETW::EventRecord"/>.
-    /// </summary>
-    public delegate void EventRecordErrorDelegate(O365::Security::ETW::IEventRecordError^ error);
-
-    /// <summary>
     /// Allows for filtering an event in the native layer before it bubbles
     /// up to callbacks.
     /// </summary>
     public ref class EventFilter {
-    public:
+    internal:
 
+        CallbackBridge^ bridge_ = gcnew CallbackBridge();
+
+    public:
         /// <summary>
         /// Constructs an EventFilter with the given Predicate.
         /// </summary>
@@ -70,22 +59,16 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         EventFilter(List<unsigned short>^ eventIds, O365::Security::ETW::Predicate^ predicate);
 
         /// <summary>
-        /// Destructs an EventFilter.
-        /// </summary>
-        ~EventFilter();
-
-        /// <summary>
         /// An event that is invoked when an ETW event is fired on this
         /// filter and the event meets the given predicate.
         /// </summary>
-        event IEventRecordDelegate^ OnEvent;
+        event IEventRecordDelegate^ OnEvent OnEventHelper(bridge_);
 
         /// <summary>
         /// An event that is invoked when an ETW event is received
         /// but an error occurs handling the record.
         /// </summary>
-        event EventRecordErrorDelegate^ OnError;
-
+		event EventRecordErrorDelegate^ OnError OnErrorHelper(bridge_);
 
     internal:
         /// <summary>
@@ -97,20 +80,9 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
             return *filter_;
         }
 
-        void EventNotification(const EVENT_RECORD &, const krabs::trace_context &);
-        void ErrorNotification(const EVENT_RECORD&, const std::string&);
-
     internal:
-        delegate void EventReceivedNativeHookDelegate(const EVENT_RECORD &, const krabs::trace_context &);
-        delegate void ErrorReceivedNativeHookDelegate(const EVENT_RECORD &, const std::string &);
-
         NativePtr<krabs::event_filter> filter_;
-        EventReceivedNativeHookDelegate^ eventReceivedDelegate_;
-        ErrorReceivedNativeHookDelegate^ errorReceivedDelegate_;
-        GCHandle eventReceivedDelegateHookHandle_;
-        GCHandle errorReceivedDelegateHookHandle_;
-        GCHandle eventReceivedDelegateHandle_;
-        GCHandle errorReceivedDelegateHandle_;
+
         void RegisterCallbacks();
     };
 
@@ -147,69 +119,10 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         RegisterCallbacks();
     }
 
-    inline EventFilter::~EventFilter()
-    {
-        if (eventReceivedDelegateHandle_.IsAllocated)
-        {
-            eventReceivedDelegateHandle_.Free();
-        }
-
-        if (eventReceivedDelegateHookHandle_.IsAllocated)
-        {
-            eventReceivedDelegateHookHandle_.Free();
-        }
-
-        if (errorReceivedDelegateHandle_.IsAllocated)
-        {
-            errorReceivedDelegateHandle_.Free();
-        }
-
-        if (errorReceivedDelegateHookHandle_.IsAllocated)
-        {
-            errorReceivedDelegateHookHandle_.Free();
-        }
-    }
-
     inline void EventFilter::RegisterCallbacks()
     {
-        eventReceivedDelegate_ = gcnew EventReceivedNativeHookDelegate(this, &EventFilter::EventNotification);
-        eventReceivedDelegateHandle_ = GCHandle::Alloc(eventReceivedDelegate_);
-        auto bridgedEventDelegate = Marshal::GetFunctionPointerForDelegate(eventReceivedDelegate_);
-        eventReceivedDelegateHookHandle_ = GCHandle::Alloc(bridgedEventDelegate);
-
-        filter_->add_on_event_callback((krabs::c_provider_callback)bridgedEventDelegate.ToPointer());
-
-        errorReceivedDelegate_ = gcnew ErrorReceivedNativeHookDelegate(this, &EventFilter::ErrorNotification);
-        errorReceivedDelegateHandle_ = GCHandle::Alloc(errorReceivedDelegate_);
-        auto bridgedErrorDelegate = Marshal::GetFunctionPointerForDelegate(errorReceivedDelegate_);
-        errorReceivedDelegateHookHandle_ = GCHandle::Alloc(bridgedErrorDelegate);
-
-        filter_->add_on_error_callback((krabs::c_provider_error_callback)bridgedErrorDelegate.ToPointer());
-    }
-
-    inline void EventFilter::EventNotification(const EVENT_RECORD& record, const krabs::trace_context& trace_context)
-    {
-        TDHSTATUS status = ERROR_SUCCESS;
-        trace_context.schema_locator.get_event_schema_no_throw(record, status);
-
-        if (status == ERROR_SUCCESS) {
-            krabs::schema schema(record, trace_context.schema_locator);
-            krabs::parser parser(schema);
-
-            OnEvent(gcnew EventRecord(record, schema, parser));
-        }
-        else {
-            auto error_message = krabs::get_status_and_record_context(status, record);
-            ErrorNotification(record, error_message);
-        }
-    }
-
-    inline void EventFilter::ErrorNotification(const EVENT_RECORD& record, const std::string& error_message)
-    {
-        auto msg = gcnew String(error_message.c_str());
-        auto metadata = gcnew EventRecordMetadata(record);
-
-        OnError(gcnew EventRecordError(msg, metadata));
+		filter_->add_on_event_callback(bridge_->GetOnEventBridge());
+		filter_->add_on_error_callback(bridge_->GetOnErrorBridge());
     }
 
 } } } }

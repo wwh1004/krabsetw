@@ -53,11 +53,6 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         RawProvider(String^ providerName);
 
         /// <summary>
-        /// Destructs a RawProvider.
-        /// </summary>
-        ~RawProvider();
-
-        /// <summary>
         /// Represents the "any" value on the provider's options, where
         /// "any" is typically used to request notification if any of the
         /// matching event types fire.
@@ -120,9 +115,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
 
         NativeHookDelegate ^del_;
         NativePtr<krabs::provider<>> provider_;
-        GCHandle delegateHookHandle_;
-        GCHandle delegateHandle_;
-        void SetUpProvider();
+        void RegisterCallbacks();
     };
 
     // Implementation
@@ -131,36 +124,20 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     inline RawProvider::RawProvider(System::Guid id)
         : provider_(ConvertGuid(id))
     {
-        SetUpProvider();
+        RegisterCallbacks();
     }
 
     inline RawProvider::RawProvider(String^ providerName)
         : provider_(msclr::interop::marshal_as<std::wstring>(providerName))
     {
-        SetUpProvider();
+        RegisterCallbacks();
     }
 
-    inline void RawProvider::SetUpProvider()
+    inline void RawProvider::RegisterCallbacks()
     {
         del_ = gcnew NativeHookDelegate(this, &RawProvider::EventNotification);
-        delegateHandle_ = GCHandle::Alloc(del_);
         auto bridged = Marshal::GetFunctionPointerForDelegate(del_);
-        delegateHookHandle_ = GCHandle::Alloc(bridged);
-
         provider_->add_on_event_callback((krabs::c_provider_callback)bridged.ToPointer());
-    }
-
-    inline RawProvider::~RawProvider()
-    {
-        if (delegateHandle_.IsAllocated)
-        {
-            delegateHandle_.Free();
-        }
-
-        if (delegateHookHandle_.IsAllocated)
-        {
-            delegateHookHandle_.Free();
-        }
     }
 
     inline void RawProvider::EventNotification(const EVENT_RECORD &record)

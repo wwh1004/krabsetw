@@ -24,6 +24,10 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     /// Represents an owned user trace.
     /// </summary>
     public ref class UserTrace : public IUserTrace, public IDisposable {
+    internal:
+
+        CallbackBridge^ bridge_ = gcnew CallbackBridge();
+
     public:
 
         /// <summary>
@@ -150,9 +154,22 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         /// <returns>the <see cref="O365::Security::ETW::TraceStats"/> for the current trace object</returns>
         virtual TraceStats QueryStats();
 
+        /// <summary>
+        /// An event is fired which has no corresponding provider.
+        /// provider.
+        /// </summary>
+        event IEventRecordDelegate^ DefaultEvent OnEventHelper(bridge_);
+
+        /// <summary>
+        /// An event is fired when failed to fire <see cref="DefaultEvent"/>.
+        /// </summary>
+        event EventRecordErrorDelegate^ DefaultError OnErrorHelper(bridge_);
+
     internal:
         bool disposed_ = false;
         O365::Security::ETW::NativePtr<krabs::user_trace> trace_;
+
+        void RegisterCallbacks();
     };
 
     // Implementation
@@ -161,6 +178,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     inline UserTrace::UserTrace()
         : trace_(new krabs::user_trace())
     {
+        RegisterCallbacks();
     }
 
     inline UserTrace::~UserTrace()
@@ -178,6 +196,7 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     {
         std::wstring nativeName = msclr::interop::marshal_as<std::wstring>(name);
         trace_.Swap(O365::Security::ETW::NativePtr<krabs::user_trace>(nativeName));
+        RegisterCallbacks();
     }
 
     inline void UserTrace::Enable(O365::Security::ETW::Provider ^provider)
@@ -219,6 +238,11 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     inline TraceStats UserTrace::QueryStats()
     {
         ExecuteAndConvertExceptions(return TraceStats(trace_->query_stats()));
+    }
+
+    inline void UserTrace::RegisterCallbacks()
+    {
+        trace_->set_default_event_callback(bridge_->GetOnEventBridge());
     }
 
 } } } }
