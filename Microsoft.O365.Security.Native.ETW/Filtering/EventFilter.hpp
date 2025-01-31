@@ -187,18 +187,20 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         filter_->add_on_error_callback((krabs::c_provider_error_callback)bridgedErrorDelegate.ToPointer());
     }
 
-    inline void EventFilter::EventNotification(const EVENT_RECORD &record, const krabs::trace_context &trace_context)
+    inline void EventFilter::EventNotification(const EVENT_RECORD& record, const krabs::trace_context& trace_context)
     {
-        try
-        {
+        TDHSTATUS status = ERROR_SUCCESS;
+        trace_context.schema_locator.get_event_schema_no_throw(record, status);
+
+        if (status == ERROR_SUCCESS) {
             krabs::schema schema(record, trace_context.schema_locator);
             krabs::parser parser(schema);
 
             OnEvent(gcnew EventRecord(record, schema, parser));
         }
-        catch (const krabs::could_not_find_schema& ex)
-        {
-            ErrorNotification(record, ex.what());
+        else {
+            auto error_message = krabs::get_status_and_record_context(status, record);
+            ErrorNotification(record, error_message);
         }
     }
 
