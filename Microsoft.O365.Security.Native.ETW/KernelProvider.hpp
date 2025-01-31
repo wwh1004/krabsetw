@@ -91,15 +91,21 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
 
 
     internal:
-        void EventNotification(const EVENT_RECORD &, const krabs::trace_context &);
+        void EventNotification(const EVENT_RECORD&, const krabs::trace_context&);
+        void ErrorNotification(const EVENT_RECORD&, const std::string&);
 
     internal:
-        delegate void NativeHookDelegate(const EVENT_RECORD &, const krabs::trace_context &);
+        delegate void EventReceivedNativeHookDelegate(const EVENT_RECORD&, const krabs::trace_context&);
+        delegate void ErrorReceivedNativeHookDelegate(const EVENT_RECORD&, const std::string&);
 
-        NativeHookDelegate ^del_;
         NativePtr<krabs::kernel_provider> provider_;
-        GCHandle delegateHookHandle_;
-        GCHandle delegateHandle_;
+        EventReceivedNativeHookDelegate^ eventReceivedDelegate_;
+        ErrorReceivedNativeHookDelegate^ errorReceivedDelegate_;
+        GCHandle eventReceivedDelegateHookHandle_;
+        GCHandle errorReceivedDelegateHookHandle_;
+        GCHandle eventReceivedDelegateHandle_;
+        GCHandle errorReceivedDelegateHandle_;
+        void RegisterCallbacks();
     };
 
     // Implementation
@@ -108,39 +114,56 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
     inline KernelProvider::KernelProvider(unsigned int flags, System::Guid id)
     : provider_(flags, ConvertGuid(id))
     {
-        del_ = gcnew NativeHookDelegate(this, &KernelProvider::EventNotification);
-        delegateHandle_ = GCHandle::Alloc(del_);
-        auto bridged = Marshal::GetFunctionPointerForDelegate(del_);
-        delegateHookHandle_ = GCHandle::Alloc(bridged);
-
-        provider_->add_on_event_callback((krabs::c_provider_callback)bridged.ToPointer());
+        RegisterCallbacks();
     }
 
     inline KernelProvider::KernelProvider(System::Guid id, PERFINFO_MASK mask)
         : provider_(ConvertGuid(id), mask)
     {
-        del_ = gcnew NativeHookDelegate(this, &KernelProvider::EventNotification);
-        delegateHandle_ = GCHandle::Alloc(del_);
-        auto bridged = Marshal::GetFunctionPointerForDelegate(del_);
-        delegateHookHandle_ = GCHandle::Alloc(bridged);
-
-        provider_->add_on_event_callback((krabs::c_provider_callback)bridged.ToPointer());
+        RegisterCallbacks();
     }
 
     inline KernelProvider::~KernelProvider()
     {
-        if (delegateHandle_.IsAllocated)
+        if (eventReceivedDelegateHandle_.IsAllocated)
         {
-            delegateHandle_.Free();
+            eventReceivedDelegateHandle_.Free();
         }
 
-        if (delegateHookHandle_.IsAllocated)
+        if (eventReceivedDelegateHookHandle_.IsAllocated)
         {
-            delegateHookHandle_.Free();
+            eventReceivedDelegateHookHandle_.Free();
+        }
+
+        if (errorReceivedDelegateHandle_.IsAllocated)
+        {
+            errorReceivedDelegateHandle_.Free();
+        }
+
+        if (errorReceivedDelegateHookHandle_.IsAllocated)
+        {
+            errorReceivedDelegateHookHandle_.Free();
         }
     }
 
-    inline void KernelProvider::EventNotification(const EVENT_RECORD &record, const krabs::trace_context &trace_context)
+    inline void KernelProvider::RegisterCallbacks()
+    {
+        eventReceivedDelegate_ = gcnew EventReceivedNativeHookDelegate(this, &KernelProvider::EventNotification);
+        eventReceivedDelegateHandle_ = GCHandle::Alloc(eventReceivedDelegate_);
+        auto bridgedEventDelegate = Marshal::GetFunctionPointerForDelegate(eventReceivedDelegate_);
+        eventReceivedDelegateHookHandle_ = GCHandle::Alloc(bridgedEventDelegate);
+
+        provider_->add_on_event_callback((krabs::c_provider_callback)bridgedEventDelegate.ToPointer());
+
+        errorReceivedDelegate_ = gcnew ErrorReceivedNativeHookDelegate(this, &KernelProvider::ErrorNotification);
+        errorReceivedDelegateHandle_ = GCHandle::Alloc(errorReceivedDelegate_);
+        auto bridgedErrorDelegate = Marshal::GetFunctionPointerForDelegate(errorReceivedDelegate_);
+        errorReceivedDelegateHookHandle_ = GCHandle::Alloc(bridgedErrorDelegate);
+
+        provider_->add_on_error_callback((krabs::c_provider_error_callback)bridgedErrorDelegate.ToPointer());
+    }
+
+    inline void KernelProvider::EventNotification(const EVENT_RECORD& record, const krabs::trace_context& trace_context)
     {
         try
         {
@@ -151,11 +174,16 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         }
         catch (const krabs::could_not_find_schema& ex)
         {
-            auto msg = gcnew String(ex.what());
-            auto metadata = gcnew EventRecordMetadata(record);
-
-            OnError(gcnew EventRecordError(msg, metadata));
+            ErrorNotification(record, ex.what());
         }
+    }
+
+    inline void KernelProvider::ErrorNotification(const EVENT_RECORD& record, const std::string& error_message)
+    {
+        auto msg = gcnew String(error_message.c_str());
+        auto metadata = gcnew EventRecordMetadata(record);
+
+        OnError(gcnew EventRecordError(msg, metadata));
     }
 
 } } } }
