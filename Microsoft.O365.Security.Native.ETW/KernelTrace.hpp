@@ -265,6 +265,11 @@ namespace Microsoft { namespace O365 { namespace Security { namespace ETW {
         ExecuteAndConvertExceptions(return TraceStats(trace_->query_stats()));
     }
 
+    inline uint64_t KernelTrace::BuffersProcessed::get()
+    {
+        return trace_->buffers_processed();
+    }
+
     inline void KernelTrace::RegisterCallbacks()
     {
         trace_->set_default_event_callback(bridge_->GetOnEventBridge());
